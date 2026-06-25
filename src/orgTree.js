@@ -2,44 +2,57 @@ import { csvParse } from 'd3-dsv'
 import { stratify, hierarchy } from 'd3-hierarchy'
 
 export function buildTree(csvText) {
-  // 1. Parse CSV — d3-dsv uses the header row as keys exactly as written
   const rows = csvParse(csvText)
 
-  // 2. stratify() — map to YOUR actual column names
-  //    "Employee Id" and "Manager" (with spaces/caps as in the CSV header)
-  const stratifier = stratify()
-    .id(d => d['Employee Id'])
-    .parentId(d => d['Manager'] || null)   // root has empty Manager field
+  const root = hierarchy(
+    stratify()
+      .id(d => d['Employee Id'])
+      .parentId(d => d['Manager'] || null)(rows)
+  )
 
-  const stratified = stratifier(rows)
-
-  // 3. Wrap with hierarchy() for traversal methods
-  const root = hierarchy(stratified)
-
-  // 4. Single bottom-up pass — note: with stratify() + hierarchy(),
-  //    the original CSV row lives at node.data.data
+  // Single bottom-up pass — each node's costs reflect descendants only (self excluded).
+  // Cache node.salary so children can read it without re-accessing the CSV row.
   root.eachAfter(node => {
     const salary = +node.data.data['Salary'] || 0
+    node.salary = salary
     const children = node.children || []
 
     if (children.length === 0) {
-      // Leaf (IC — no direct reports)
-      node.icCost = salary
+      // Leaf (IC): no descendants, so all cost fields are 0
+      node.icCost   = 0
       node.mgmtCost = 0
-      node.totalCost = salary
-      node.descendantCount = 0
+      node.totalCost = 0
+      node.descendantCount    = 0
       node.nonLeafDescendants = 0
     } else {
-      // Manager — aggregate from already-computed children
-      node.icCost = children.reduce((s, c) => s + c.icCost, 0)
-      node.totalCost = salary + children.reduce((s, c) => s + c.totalCost, 0)
-      node.mgmtCost = node.totalCost - node.icCost
-      node.descendantCount = children.reduce((s, c) => s + c.descendantCount + 1, 0)
-      node.nonLeafDescendants = children.reduce((s, c) => {
-        return s + c.nonLeafDescendants + (c.children ? 1 : 0)
-      }, 0)
+      let icCost = 0
+      let mgmtCost = 0
+
+      for (const child of children) {
+        if (!child.children || child.children.length === 0) {
+          // IC child: their salary goes into icCost
+          icCost += child.salary
+        } else {
+          // Manager child: their salary goes into mgmtCost;
+          // their own aggregated costs bubble up separately
+          mgmtCost += child.salary + child.mgmtCost
+          icCost   += child.icCost
+        }
+      }
+
+      node.icCost    = icCost
+      node.mgmtCost  = mgmtCost
+      node.totalCost = icCost + mgmtCost
+
+      node.descendantCount = children.reduce(
+        (s, c) => s + c.descendantCount + 1, 0
+      )
+      node.nonLeafDescendants = children.reduce(
+        (s, c) => s + c.nonLeafDescendants + (c.children ? 1 : 0), 0
+      )
     }
 
+    // Mgmt cost ratio: mgmt cost / IC cost (management overhead per IC dollar)
     node.mgmtCostRatio = node.icCost > 0
       ? node.mgmtCost / node.icCost
       : null

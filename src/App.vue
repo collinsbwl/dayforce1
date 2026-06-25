@@ -74,7 +74,9 @@ onUnmounted(() => {
       >
         <div class="px-4 py-3 border-b border-gray-100">
           <h1 class="text-sm font-semibold text-gray-900 tracking-tight">Org Chart</h1>
-          <p class="text-xs text-gray-400 mt-0.5">{{ root.descendantCount + 1 }} employees</p>
+          <p class="text-xs text-gray-400 mt-0.5">
+            {{ (root.descendantCount + 1).toLocaleString() }} employees
+          </p>
         </div>
         <div class="flex-1 overflow-y-auto py-1">
           <OrgChart
@@ -104,8 +106,9 @@ onUnmounted(() => {
       <!-- Right: detail -->
       <main class="flex-1 overflow-y-auto min-w-0">
         <NodeDetail v-if="selectedNode" :node="selectedNode" />
-        <div v-else class="h-full flex items-center justify-center">
-          <p class="text-sm text-gray-400">Select an employee to see details</p>
+        <div v-else class="h-full flex flex-col items-center justify-center gap-2 text-center px-8">
+          <p class="text-sm font-medium text-gray-400">No employee selected</p>
+          <p class="text-xs text-gray-300">Click any row in the tree to see cost breakdowns and team details</p>
         </div>
       </main>
 

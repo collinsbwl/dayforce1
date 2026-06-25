@@ -49,7 +49,7 @@ const avatarColor = computed(() => {
       <!-- Chevron or spacer -->
       <button
         v-if="hasChildren"
-        class="flex-shrink-0 w-4 h-4 flex items-center justify-center text-gray-400
+        class="shrink-0 w-4 h-4 flex items-center justify-center text-gray-400
                hover:text-gray-600 rounded transition-transform duration-150"
         :class="{ 'rotate-90': isOpen }"
         @click.stop="isOpen = !isOpen"
@@ -60,11 +60,11 @@ const avatarColor = computed(() => {
           <path d="M1 1l4 4-4 4"/>
         </svg>
       </button>
-      <div v-else class="flex-shrink-0 w-4" />
+      <div v-else class="shrink-0 w-4" />
 
       <!-- Avatar with initials -->
       <div
-        class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center
+        class="shrink-0 w-6 h-6 rounded-full flex items-center justify-center
                text-white text-xs font-semibold uppercase"
         :style="{ backgroundColor: avatarColor }"
       >
@@ -82,10 +82,7 @@ const avatarColor = computed(() => {
       </div>
 
       <!-- Descendant count -->
-      <span
-        v-if="node.descendantCount > 0"
-        class="flex-shrink-0 text-xs text-gray-400 tabular-nums"
-      >
+      <span v-if="node.descendantCount > 0" class="shrink-0 text-xs text-gray-400 tabular-nums">
         {{ node.descendantCount }}
       </span>
     </div>
@@ -113,7 +110,7 @@ const avatarColor = computed(() => {
       >
         <!-- Horizontal elbow connector -->
         <div
-          class="absolute -left-3 top-[18px] w-3 h-px bg-gray-200 pointer-events-none"
+          class="absolute -left-3 top-4.5 w-3 h-px bg-gray-200 pointer-events-none"
         />
         <OrgChart
           :node="child"
