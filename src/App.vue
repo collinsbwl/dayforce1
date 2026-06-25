@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { buildTree } from './orgTree.js'
 import OrgChart from './components/OrgChart.vue'
 import NodeDetail from './components/NodeDetail.vue'
@@ -21,10 +21,38 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+// Resizable divider
+const leftWidth = ref(384) // matches w-96
+const isResizing = ref(false)
+
+function startResize() {
+  isResizing.value = true
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', stopResize)
+}
+
+function onMouseMove(e) {
+  leftWidth.value = Math.min(Math.max(e.clientX, 220), 720)
+}
+
+function stopResize() {
+  isResizing.value = false
+  document.removeEventListener('mousemove', onMouseMove)
+  document.removeEventListener('mouseup', stopResize)
+}
+
+onUnmounted(() => {
+  document.removeEventListener('mousemove', onMouseMove)
+  document.removeEventListener('mouseup', stopResize)
+})
 </script>
 
 <template>
-  <div class="h-screen flex overflow-hidden bg-gray-50">
+  <div
+    class="h-screen flex overflow-hidden bg-gray-50"
+    :class="{ 'select-none cursor-col-resize': isResizing }"
+  >
 
     <!-- Loading -->
     <div v-if="loading" class="flex-1 flex items-center justify-center">
@@ -40,7 +68,10 @@ onMounted(async () => {
     <template v-else-if="root">
 
       <!-- Left: tree -->
-      <aside class="w-96 flex-shrink-0 border-r border-gray-200 bg-white flex flex-col overflow-hidden">
+      <aside
+        class="flex-shrink-0 bg-white flex flex-col overflow-hidden"
+        :style="{ width: leftWidth + 'px' }"
+      >
         <div class="px-4 py-3 border-b border-gray-100">
           <h1 class="text-sm font-semibold text-gray-900 tracking-tight">Org Chart</h1>
           <p class="text-xs text-gray-400 mt-0.5">{{ root.descendantCount + 1 }} employees</p>
@@ -55,8 +86,23 @@ onMounted(async () => {
         </div>
       </aside>
 
+      <!-- Drag handle -->
+      <div
+        class="w-1 flex-shrink-0 bg-gray-200 hover:bg-indigo-400 transition-colors duration-150
+               cursor-col-resize relative group"
+        @mousedown.prevent="startResize"
+      >
+        <!-- Dots hint -->
+        <div class="absolute inset-y-0 left-1/2 -translate-x-1/2 flex flex-col items-center
+                    justify-center gap-[3px] opacity-0 group-hover:opacity-100 transition-opacity">
+          <div class="w-[3px] h-[3px] rounded-full bg-white" />
+          <div class="w-[3px] h-[3px] rounded-full bg-white" />
+          <div class="w-[3px] h-[3px] rounded-full bg-white" />
+        </div>
+      </div>
+
       <!-- Right: detail -->
-      <main class="flex-1 overflow-y-auto">
+      <main class="flex-1 overflow-y-auto min-w-0">
         <NodeDetail v-if="selectedNode" :node="selectedNode" />
         <div v-else class="h-full flex items-center justify-center">
           <p class="text-sm text-gray-400">Select an employee to see details</p>
