@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, watchEffect, onMounted, onUnmounted } from 'vue'
 import { buildTree } from './orgTree.js'
 import OrgChart from './components/OrgChart.vue'
 import NodeDetail from './components/NodeDetail.vue'
@@ -24,6 +24,29 @@ onMounted(async () => {
 
 // Resizable divider
 const leftWidth = ref(384) // matches w-96
+
+// Auto-expand: watch inner content width and grow the panel to fit.
+// Disabled once the user manually drags the divider leftward.
+const treeContent = ref(null)
+let autoExpandDisabled = false
+
+watchEffect((onCleanup) => {
+  const el = treeContent.value
+  if (!el) return
+  const obs = new ResizeObserver(([entry]) => {
+    if (autoExpandDisabled) return
+    const w = entry.borderBoxSize?.[0]?.inlineSize ?? entry.contentRect.width
+    if (w > leftWidth.value) {
+      leftWidth.value = Math.min(Math.ceil(w) + 24, 720)
+    }
+  })
+  obs.observe(el)
+  onCleanup(() => obs.disconnect())
+})
+
+// Tree zoom
+const treeZoom = ref(1)
+
 const isResizing = ref(false)
 
 function startResize() {
@@ -33,7 +56,9 @@ function startResize() {
 }
 
 function onMouseMove(e) {
-  leftWidth.value = Math.min(Math.max(e.clientX, 220), 720)
+  const newWidth = Math.min(Math.max(e.clientX, 220), 720)
+  if (newWidth < leftWidth.value) autoExpandDisabled = true
+  leftWidth.value = newWidth
 }
 
 function stopResize() {
@@ -70,21 +95,45 @@ onUnmounted(() => {
       <!-- Left: tree -->
       <aside
         class="flex-shrink-0 bg-white flex flex-col overflow-hidden"
-        :style="{ width: leftWidth + 'px' }"
+        :style="{
+          width: leftWidth + 'px',
+          transition: isResizing ? 'none' : 'width 0.25s ease',
+        }"
       >
-        <div class="px-4 py-3 border-b border-gray-100">
-          <h1 class="text-sm font-semibold text-gray-900 tracking-tight">Org Chart</h1>
-          <p class="text-xs text-gray-400 mt-0.5">
-            {{ (root.descendantCount + 1).toLocaleString() }} employees
-          </p>
+        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+          <div>
+            <h1 class="text-sm font-semibold text-gray-900 tracking-tight">Org Chart</h1>
+            <p class="text-xs text-gray-400 mt-0.5">
+              {{ (root.descendantCount + 1).toLocaleString() }} employees
+            </p>
+          </div>
+          <!-- Zoom controls -->
+          <div class="flex items-center gap-1 shrink-0">
+            <button
+              class="w-6 h-6 flex items-center justify-center rounded text-gray-400
+                     hover:bg-gray-100 hover:text-gray-700 text-base leading-none"
+              @click="treeZoom = Math.max(treeZoom - 0.1, 0.4)"
+            >−</button>
+            <button
+              class="text-xs text-gray-400 hover:text-gray-700 tabular-nums w-9 text-center"
+              @click="treeZoom = 1"
+            >{{ Math.round(treeZoom * 100) }}%</button>
+            <button
+              class="w-6 h-6 flex items-center justify-center rounded text-gray-400
+                     hover:bg-gray-100 hover:text-gray-700 text-base leading-none"
+              @click="treeZoom = Math.min(treeZoom + 0.1, 2)"
+            >+</button>
+          </div>
         </div>
-        <div class="flex-1 overflow-y-auto py-1">
-          <OrgChart
-            :node="root"
-            :selected-node="selectedNode"
-            :depth="0"
-            @select="selectedNode = $event"
-          />
+        <div class="flex-1 overflow-auto py-1">
+          <div ref="treeContent" :style="{ zoom: treeZoom }">
+            <OrgChart
+              :node="root"
+              :selected-node="selectedNode"
+              :depth="0"
+              @select="selectedNode = $event"
+            />
+          </div>
         </div>
       </aside>
 
