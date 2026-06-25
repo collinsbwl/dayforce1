@@ -82,7 +82,7 @@ const metrics = computed(() => [
     <!-- Header -->
     <div class="flex items-start gap-4 mb-6">
       <div
-        class="w-14 h-14 rounded-full flex-shrink-0 flex items-center justify-center
+        class="w-14 h-14 rounded-full shrink-0 flex items-center justify-center
                text-white text-lg font-bold uppercase tracking-wide"
         :style="{ backgroundColor: avatarColor }"
       >
